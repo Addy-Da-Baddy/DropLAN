@@ -41,6 +41,10 @@ setup(
         "qrcode[pil]>=7.0.0",
         "eventlet>=0.30.0",
         "python-socketio>=5.0.0",
+        "APScheduler>=3.9.0",
+        "netifaces>=0.11.0",
+        "psutil>=5.8.0",
+        "requests>=2.25.0",
     ],
     entry_points={
         "console_scripts": [
