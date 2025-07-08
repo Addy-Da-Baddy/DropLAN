@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DropLAN - Local Network File Sharing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #e9ecef;
+            --border-color: #dee2e6;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --text-muted: #adb5bd;
+            --accent-blue: #0d6efd;
+            --accent-green: #198754;
+            --accent-red: #dc3545;
+            --accent-orange: #fd7e14;
+            --shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            --shadow-hover: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: var(--accent-blue);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            animation: slideIn 0.6s ease-out;
+            box-shadow: var(--shadow);
+        }
+
+        .card:hover {
+            border-color: var(--accent-blue);
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            color: var(--accent-blue);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+        }
+
+        .icon {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-red);
+            transition: background 0.3s ease;
+        }
+
+        .status-indicator.connected {
+            background: var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover, .upload-area.drag-over {
+            border-color: var(--accent-blue);
+            background: rgba(13, 110, 253, 0.05);
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+        }
+
+        /* Buttons */
+        .btn {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: var(--font-family);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .btn:hover {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--accent-red);
+            border-color: var(--accent-red);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--accent-green);
+            border-color: var(--accent-green);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* File List */
+        .file-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .file-item {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        .file-item:hover {
+            border-color: var(--accent-blue);
+            background: rgba(13, 110, 253, 0.05);
+        }
+
+        .file-info {
+            flex: 1;
+            margin-right: 15px;
+        }
+
+        .file-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .file-meta {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .file-actions .btn {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+
+        /* Notes Area */
+        .notes-area {
+            margin-bottom: 20px;
+        }
+
+        .notes-textarea {
+            width: 100%;
+            min-height: 200px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            color: var(--text-primary);
+            font-family: var(--font-family);
+            font-size: 0.9rem;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        .notes-textarea:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 10px rgba(13, 110, 253, 0.1);
+        }
+
+        /* Network Info */
+        .network-info {
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .network-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .network-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .warning {
+            background: rgba(210, 153, 34, 0.1);
+            border: 1px solid var(--accent-orange);
+            color: var(--accent-orange);
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+        }
+
+        /* QR Code */
+        .qr-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .qr-container img {
+            max-width: 200px;
+            height: auto;
+            border-radius: 8px;
+            background: white;
+            padding: 10px;
+        }
+
+        /* Manual IP Input */
+        .manual-ip {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .manual-ip input {
+            flex: 1;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            color: var(--text-primary);
+            font-family: var(--font-family);
+            font-size: 0.9rem;
+        }
+
+        .manual-ip input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        /* Action Buttons Grid */
+        .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .toast {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            min-width: 300px;
+            animation: slideIn 0.3s ease-out;
+            position: relative;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .toast.success { border-left: 4px solid var(--accent-green); }
+        .toast.error { border-left: 4px solid var(--accent-red); }
+        .toast.info { border-left: 4px solid var(--accent-blue); }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        /* Loading states */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            border-top-color: var(--accent-blue);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Notes List */
+        .notes-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .note-item {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        .note-item:hover {
+            border-color: var(--accent-blue);
+            background: rgba(13, 110, 253, 0.05);
+        }
+
+        .note-item.editing {
+            border-color: var(--accent-orange);
+        }
+
+        .note-content {
+            flex: 1;
+            margin-right: 15px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .note-preview {
+            max-height: 100px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .note-meta {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .note-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .note-actions .btn {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+
+        .note-edit-textarea {
+            width: 100%;
+            min-height: 80px;
+            background: var(--bg-primary);
+            border: 1px solid var(--accent-blue);
+            border-radius: 4px;
+            padding: 10px;
+            color: var(--text-primary);
+            font-family: var(--font-family);
+            font-size: 0.9rem;
+            resize: vertical;
+            margin-bottom: 10px;
+        }
+
+        .note-edit-textarea:focus {
+            outline: none;
+            box-shadow: 0 0 5px rgba(13, 110, 253, 0.3);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            .grid { grid-template-columns: 1fr; gap: 20px; }
+            h1 { font-size: 2rem; }
+            .card { padding: 20px; }
+            .file-actions { flex-direction: column; }
+            .manual-ip { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DropLAN</h1>
+            <div class="subtitle">Local Network File Sharing</div>
+        </header>
+
+        <div class="grid">
+            <!-- File Upload & Bucket -->
+            <div class="card">
+                <div class="card-title">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    File Bucket
+                    <div class="status-indicator" id="connection-status"></div>
+                </div>
+                
+                <div class="upload-area" id="upload-area">
+                    <input type="file" id="file-input" multiple>
+                    <div class="upload-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14,2 14,8 20,8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10,9 9,9 8,9"/>
+                        </svg>
+                    </div>
+                    <div>Drag & drop files or click to select</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">
+                        Files expire after 30 minutes
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="upload-btn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7,10 12,15 17,10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Upload
+                    </button>
+                    <button class="btn btn-success" id="download-all-btn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17,8 12,13 7,8"/>
+                            <line x1="12" y1="13" x2="12" y2="1"/>
+                        </svg>
+                        Download All
+                    </button>
+                    <button class="btn btn-danger" id="clear-bucket-btn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3,6 5,6 21,6"/>
+                            <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                        </svg>
+                        Clear Bucket
+                    </button>
+                </div>
+
+                <div class="file-list" id="file-list">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                            </svg>
+                        </div>
+                        <div>No files in bucket</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes Section -->
+            <div class="card">
+                <div class="card-title">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14,2 14,8 20,8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10,9 9,9 8,9"/>
+                    </svg>
+                    Notes App
+                </div>
+                
+                <div class="notes-area">
+                    <textarea 
+                        class="notes-textarea" 
+                        id="notes-textarea" 
+                        placeholder="Write a new note here..."
+                    ></textarea>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="save-note-btn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <polyline points="17,21 17,13 7,13 7,21"/>
+                            <polyline points="7,3 7,8 15,8"/>
+                        </svg>
+                        Save Note
+                    </button>
+                    <button class="btn btn-danger" id="clear-notes-btn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3,6 5,6 21,6"/>
+                            <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                        </svg>
+                        Clear All Notes
+                    </button>
+                </div>
+
+                <div class="notes-list" id="notes-list">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14,2 14,8 20,8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10,9 9,9 8,9"/>
+                            </svg>
+                        </div>
+                        <div>No notes saved</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QR Code & Network Info -->
+            <div class="card">
+                <div class="card-title">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                        <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                        <line x1="12" y1="20" x2="12.01" y2="20"/>
+                    </svg>
+                    Device Sync
+                </div>
+                
+                <div class="warning">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    Both devices must be connected to the same Wi-Fi network
+                </div>
+
+                <div class="network-info" id="network-info">
+                    <div class="network-item">
+                        <span>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                                <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                                <line x1="12" y1="20" x2="12.01" y2="20"/>
+                            </svg>
+                            Network:
+                        </span>
+                        <span id="wifi-name">Loading...</span>
+                    </div>
+                    <div class="network-item">
+                        <span>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="2" y1="12" x2="22" y2="12"/>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                            </svg>
+                            IP Address:
+                        </span>
+                        <span id="device-ip">Loading...</span>
+                    </div>
+                    <div class="network-item">
+                        <span>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                <line x1="8" y1="21" x2="16" y2="21"/>
+                                <line x1="12" y1="17" x2="12" y2="21"/>
+                            </svg>
+                            Hostname:
+                        </span>
+                        <span id="hostname">Loading...</span>
+                    </div>
+                </div>
+
+                <div class="qr-container" id="qr-container">
+                    <div class="spinner"></div>
+                </div>
+
+                <div class="manual-ip">
+                    <input type="text" id="manual-ip-input" placeholder="Enter IP manually (optional)">
+                    <button class="btn" id="generate-qr-btn">Generate QR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Socket.IO CDN -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    
+    <script>
+        // Configuration
+        const API_BASE = window.location.origin;
+        const socket = io(API_BASE);
+
+        // DOM Elements
+        const elements = {
+            connectionStatus: document.getElementById('connection-status'),
+            uploadArea: document.getElementById('upload-area'),
+            fileInput: document.getElementById('file-input'),
+            uploadBtn: document.getElementById('upload-btn'),
+            downloadAllBtn: document.getElementById('download-all-btn'),
+            clearBucketBtn: document.getElementById('clear-bucket-btn'),
+            fileList: document.getElementById('file-list'),
+            notesTextarea: document.getElementById('notes-textarea'),
+            saveNoteBtn: document.getElementById('save-note-btn'),
+            clearNotesBtn: document.getElementById('clear-notes-btn'),
+            notesList: document.getElementById('notes-list'),
+            networkInfo: document.getElementById('network-info'),
+            wifiName: document.getElementById('wifi-name'),
+            deviceIp: document.getElementById('device-ip'),
+            hostname: document.getElementById('hostname'),
+            qrContainer: document.getElementById('qr-container'),
+            manualIpInput: document.getElementById('manual-ip-input'),
+            generateQrBtn: document.getElementById('generate-qr-btn'),
+            toastContainer: document.getElementById('toast-container')
+        };
+
+        // State
+        let currentFiles = {};
+        let currentNotes = {};
+        let timeUpdateInterval;
+
+        // Utility Functions
+        function showToast(message, type = 'info', duration = 4000) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            
+            elements.toastContainer.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease-out reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatTimeAgo(timestamp) {
+            const now = Date.now() / 1000;
+            const diff = now - timestamp;
+            const expiry = 1800; // 30 minutes
+            const remaining = expiry - diff;
+            
+            if (remaining <= 0) return 'Expired';
+            
+            const minutes = Math.floor(remaining / 60);
+            const seconds = Math.floor(remaining % 60);
+            
+            if (minutes > 0) {
+                return `${minutes}m ${seconds}s remaining`;
+            } else {
+                return `${seconds}s remaining`;
+            }
+        }
+
+        function startTimeUpdates() {
+            // Clear existing interval
+            if (timeUpdateInterval) {
+                clearInterval(timeUpdateInterval);
+            }
+            
+            // Update times every second
+            timeUpdateInterval = setInterval(() => {
+                updateFileTimestamps();
+            }, 1000);
+        }
+
+        function updateFileTimestamps() {
+            const timeElements = document.querySelectorAll('.file-time, .note-time');
+            timeElements.forEach(element => {
+                const timestamp = parseFloat(element.dataset.timestamp);
+                element.textContent = formatTimeAgo(timestamp);
+            });
+        }
+
+        // Socket.IO Event Handlers
+        socket.on('connect', () => {
+            elements.connectionStatus.classList.add('connected');
+            showToast('Connected to server', 'success');
+            loadBucketContents();
+        });
+
+        socket.on('disconnect', () => {
+            elements.connectionStatus.classList.remove('connected');
+            showToast('Disconnected from server', 'error');
+        });
+
+        socket.on('file_uploaded', () => {
+            showToast('File uploaded successfully', 'success');
+            loadBucketContents();
+        });
+
+        socket.on('file_deleted', () => {
+            showToast('File deleted', 'info');
+            loadBucketContents();
+        });
+
+        socket.on('bucket_cleared', () => {
+            showToast('Bucket cleared', 'info');
+            loadBucketContents();
+        });
+
+        socket.on('note_uploaded', () => {
+            showToast('Note saved successfully', 'success');
+            loadNotesContents();
+        });
+
+        socket.on('note_deleted', () => {
+            showToast('Note deleted', 'info');
+            loadNotesContents();
+        });
+
+        socket.on('notes_cleared', () => {
+            showToast('All notes cleared', 'info');
+            loadNotesContents();
+        });
+
+        // API Functions
+        async function apiCall(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, options);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response;
+            } catch (error) {
+                showToast(`API Error: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        async function loadBucketContents() {
+            try {
+                const response = await apiCall('/api/bucket/files');
+                const files = await response.json();
+                currentFiles = files;
+                renderFileList(files);
+            } catch (error) {
+                console.error('Failed to load bucket contents:', error);
+            }
+        }
+
+        async function loadNotesContents() {
+            try {
+                const response = await apiCall('/api/bucket/notes');
+                const notes = await response.json();
+                currentNotes = notes;
+                renderNotesList(notes);
+            } catch (error) {
+                console.error('Failed to load notes contents:', error);
+            }
+        }
+
+        async function loadNetworkInfo() {
+            try {
+                const response = await apiCall('/api/network-info');
+                networkData = await response.json();
+                
+                elements.wifiName.textContent = networkData.wifi_name || 'Unknown';
+                elements.deviceIp.textContent = networkData.ip || 'Unknown';
+                elements.hostname.textContent = networkData.hostname || 'Unknown';
+                
+                generateQRCode(networkData.ip);
+            } catch (error) {
+                console.error('Failed to load network info:', error);
+                elements.wifiName.textContent = 'Error';
+                elements.deviceIp.textContent = 'Error';
+                elements.hostname.textContent = 'Error';
+            }
+        }
+
+        async function generateQRCode(ip) {
+            try {
+                const response = await apiCall(`/api/qr/?ip=${ip}`);
+                const blob = await response.blob();
+                const qrUrl = URL.createObjectURL(blob);
+                
+                elements.qrContainer.innerHTML = `
+                    <img src="${qrUrl}" alt="QR Code">
+                    <div style="margin-top: 10px; font-size: 0.8rem; color: var(--text-secondary);">
+                        Scan to access: http://${ip}:5000/LAN_Drop
+                    </div>
+                `;
+            } catch (error) {
+                elements.qrContainer.innerHTML = `
+                    <div style="color: var(--accent-red);">
+                        Failed to generate QR code
+                    </div>
+                `;
+            }
+        }
+
+        // File Management
+        function renderFileList(files) {
+            const fileEntries = Object.entries(files || {});
+            
+            if (fileEntries.length === 0) {
+                elements.fileList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                            </svg>
+                        </div>
+                        <div>No files in bucket</div>
+                    </div>
+                `;
+                return;
+            }
+
+            elements.fileList.innerHTML = fileEntries.map(([hash, fileData]) => `
+                <div class="file-item">
+                    <div class="file-info">
+                        <div class="file-name">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14,2 14,8 20,8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10,9 9,9 8,9"/>
+                            </svg>
+                            ${fileData.name}
+                        </div>
+                        <div class="file-meta">
+                            ${fileData.size ? formatFileSize(fileData.size) + ' • ' : ''}
+                            <span class="file-time" data-timestamp="${fileData.timestamp}">
+                                ${formatTimeAgo(fileData.timestamp)}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="btn" onclick="downloadFile('${hash}', '${fileData.name}')">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17,8 12,13 7,8"/>
+                                <line x1="12" y1="13" x2="12" y2="1"/>
+                            </svg>
+                            Download
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteFile('${hash}')">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3,6 5,6 21,6"/>
+                                <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                            </svg>
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Start real-time updates for timestamps
+            startTimeUpdates();
+        }
+
+        async function uploadFiles() {
+            const files = elements.fileInput.files;
+            if (files.length === 0) {
+                showToast('Please select files to upload', 'error');
+                return;
+            }
+
+            elements.uploadBtn.classList.add('loading');
+            elements.uploadBtn.innerHTML = '<span class="spinner"></span> Uploading...';
+
+            try {
+                for (const file of files) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    await apiCall('/api/upload/file', {
+                        method: 'POST',
+                        body: formData
+                    });
+                }
+                
+                elements.fileInput.value = '';
+                showToast(`${files.length} file(s) uploaded successfully`, 'success');
+            } catch (error) {
+                showToast('Upload failed', 'error');
+            } finally {
+                elements.uploadBtn.classList.remove('loading');
+                elements.uploadBtn.innerHTML = `
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7,10 12,15 17,10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Upload
+                `;
+            }
+        }
+
+        async function downloadFile(hash, filename) {
+            try {
+                window.open(`${API_BASE}/api/download/${hash}`, '_blank');
+            } catch (error) {
+                showToast('Download failed', 'error');
+            }
+        }
+
+        async function deleteFile(hash) {
+            if (!confirm('Are you sure you want to delete this file?')) return;
+
+            try {
+                await apiCall(`/api/delete/file/${hash}`, { method: 'DELETE' });
+            } catch (error) {
+                showToast('Delete failed', 'error');
+            }
+        }
+
+        async function clearBucket() {
+            if (!confirm('Are you sure you want to clear the entire bucket?')) return;
+
+            try {
+                await apiCall('/api/clear/bucket', { method: 'DELETE' });
+            } catch (error) {
+                showToast('Clear bucket failed', 'error');
+            }
+        }
+
+        async function downloadAllFiles() {
+            const fileEntries = Object.entries(currentFiles || {});
+            if (fileEntries.length === 0) {
+                showToast('No files to download', 'error');
+                return;
+            }
+
+            showToast('Downloading all files...', 'info');
+            
+            // Download each file individually
+            for (const [hash, fileData] of fileEntries) {
+                await downloadFile(hash, fileData.name);
+                await new Promise(resolve => setTimeout(resolve, 100)); // Small delay between downloads
+            }
+        }
+
+        // Notes Management
+        function renderNotesList(notes) {
+            const noteEntries = Object.entries(notes || {});
+            
+            if (noteEntries.length === 0) {
+                elements.notesList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14,2 14,8 20,8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10,9 9,9 8,9"/>
+                            </svg>
+                        </div>
+                        <div>No notes saved</div>
+                    </div>
+                `;
+                return;
+            }
+
+            elements.notesList.innerHTML = noteEntries.map(([hash, noteData]) => `
+                <div class="note-item" id="note-${hash}">
+                    <div class="note-content">
+                        <div class="note-preview">${noteData.content}</div>
+                        <div class="note-meta">
+                            <span class="note-time" data-timestamp="${noteData.timestamp}">
+                                ${formatTimeAgo(noteData.timestamp)}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="note-actions">
+                        <button class="btn" onclick="editNote('${hash}', \`${noteData.content.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                            Edit
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteNote('${hash}')">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3,6 5,6 21,6"/>
+                                <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                            </svg>
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Start real-time updates for timestamps
+            startTimeUpdates();
+        }
+
+        async function saveNote() {
+            const content = elements.notesTextarea.value.trim();
+            if (!content) {
+                showToast('Note cannot be empty', 'error');
+                return;
+            }
+
+            elements.saveNoteBtn.classList.add('loading');
+            elements.saveNoteBtn.innerHTML = '<span class="spinner"></span> Saving...';
+
+            try {
+                await apiCall('/api/upload/note', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+                
+                elements.notesTextarea.value = '';
+            } catch (error) {
+                showToast('Failed to save note', 'error');
+            } finally {
+                elements.saveNoteBtn.classList.remove('loading');
+                elements.saveNoteBtn.innerHTML = `
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17,21 17,13 7,13 7,21"/>
+                        <polyline points="7,3 7,8 15,8"/>
+                    </svg>
+                    Save Note
+                `;
+            }
+        }
+
+        function editNote(hash, content) {
+            const noteElement = document.getElementById(`note-${hash}`);
+            if (!noteElement) return;
+
+            noteElement.classList.add('editing');
+            noteElement.innerHTML = `
+                <div class="note-content">
+                    <textarea class="note-edit-textarea" id="edit-textarea-${hash}">${content}</textarea>
+                </div>
+                <div class="note-actions">
+                    <button class="btn btn-success" onclick="updateNote('${hash}')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20,6 9,17 4,12"/>
+                        </svg>
+                        Save
+                    </button>
+                    <button class="btn" onclick="cancelEdit('${hash}')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                        Cancel
+                    </button>
+                </div>
+            `;
+        }
+
+        async function updateNote(hash) {
+            const textarea = document.getElementById(`edit-textarea-${hash}`);
+            if (!textarea) return;
+
+            const content = textarea.value.trim();
+            if (!content) {
+                showToast('Note cannot be empty', 'error');
+                return;
+            }
+
+            try {
+                // Delete the old note
+                await apiCall(`/api/delete/note/${hash}`, { method: 'DELETE' });
+                
+                // Create the new note
+                await apiCall('/api/upload/note', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+                
+                showToast('Note updated successfully', 'success');
+            } catch (error) {
+                showToast('Failed to update note', 'error');
+                cancelEdit(hash);
+            }
+        }
+
+        function cancelEdit(hash) {
+            loadNotesContents(); // Reload to restore original view
+        }
+
+        async function deleteNote(hash) {
+            if (!confirm('Are you sure you want to delete this note?')) return;
+
+            try {
+                await apiCall(`/api/delete/note/${hash}`, { method: 'DELETE' });
+            } catch (error) {
+                showToast('Delete failed', 'error');
+            }
+        }
+
+        async function clearAllNotes() {
+            if (!confirm('Are you sure you want to clear all notes?')) return;
+
+            try {
+                await apiCall('/api/clear/notes', { method: 'DELETE' });
+            } catch (error) {
+                showToast('Clear notes failed', 'error');
+            }
+        }
+
+        // Event Listeners
+        elements.uploadArea.addEventListener('click', () => elements.fileInput.click());
+
+        elements.uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            elements.uploadArea.classList.add('drag-over');
+        });
+
+        elements.uploadArea.addEventListener('dragleave', () => {
+            elements.uploadArea.classList.remove('drag-over');
+        });
+
+        elements.uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            elements.uploadArea.classList.remove('drag-over');
+            elements.fileInput.files = e.dataTransfer.files;
+        });
+
+        elements.uploadBtn.addEventListener('click', uploadFiles);
+        elements.downloadAllBtn.addEventListener('click', downloadAllFiles);
+        elements.clearBucketBtn.addEventListener('click', clearBucket);
+
+        elements.saveNoteBtn.addEventListener('click', saveNote);
+        elements.clearNotesBtn.addEventListener('click', clearAllNotes);
+
+        elements.generateQrBtn.addEventListener('click', () => {
+            const manualIp = elements.manualIpInput.value.trim();
+            if (manualIp) {
+                generateQRCode(manualIp);
+            } else {
+                showToast('Please enter an IP address', 'error');
+            }
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadNetworkInfo();
+            loadBucketContents();
+            loadNotesContents();
+            
+            // Start real-time timestamp updates immediately
+            startTimeUpdates();
+        });
+
+        // Global functions for inline event handlers
+        window.downloadFile = downloadFile;
+        window.deleteFile = deleteFile;
+        window.editNote = editNote;
+        window.updateNote = updateNote;
+        window.cancelEdit = cancelEdit;
+        window.deleteNote = deleteNote;
+    </script>
+</body>
+</html>

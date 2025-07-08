@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=DropLAN
+Comment=Local Network File Sharing Tool
+Exec=/home/%u/.local/bin/droplan
+Icon=folder-network
+Terminal=false
+Categories=Network;FileTransfer;
+Keywords=file;sharing;network;lan;

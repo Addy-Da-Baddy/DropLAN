@@ -1,0 +1,2 @@
+[console_scripts]
+droplan = droplan.cli:main
