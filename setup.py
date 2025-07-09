@@ -14,7 +14,7 @@ def read_readme():
 
 setup(
     name="droplan",
-    version="1.0.0",
+    version="2.0.0",
     author="DropLAN Team",
     description="A local network file sharing tool with real-time sync",
     long_description=read_readme(),
@@ -49,8 +49,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "droplan=droplan.cli:main",
-            "droplan-docker-wrapper=/home/addy/DropLAN/droplan-wrapper.sh"
+            "droplan=droplan.cli:main"
         ],
     },
     include_package_data=True,

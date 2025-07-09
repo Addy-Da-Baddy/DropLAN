@@ -52,12 +52,21 @@ def get_valid_files():
     files = meta.get('files', {})
     for h, data in files.items():
         if now - data['timestamp'] < 1800:
-            valid[h] = data
+            # Return timestamp in ms for frontend
+            valid[h] = {**data, 'timestamp': int(data['timestamp'] * 1000)}
     return valid
 
 
 def get_all_files_metadata():
-    return _load_meta()
+    meta = _load_meta()
+    # Convert all file timestamps to ms
+    files = meta.get('files', {})
+    for h, data in files.items():
+        if 'timestamp' in data:
+            data['timestamp'] = int(data['timestamp'] * 1000)
+    meta['files'] = files
+    return meta
+
 
 def get_file_path_by_hash(file_hash):
     meta = _load_meta()

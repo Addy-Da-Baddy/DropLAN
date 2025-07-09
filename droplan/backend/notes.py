@@ -51,7 +51,8 @@ def get_notes():
     
     for note_hash, data in notes.items():
         if now - data['timestamp'] < 1800:  # 30 minutes validity
-            valid_notes[note_hash] = data
+            # Return timestamp in ms for frontend
+            valid_notes[note_hash] = {**data, 'timestamp': int(data['timestamp'] * 1000)}
     
     return valid_notes
 

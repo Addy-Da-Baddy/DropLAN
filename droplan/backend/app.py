@@ -11,6 +11,9 @@ import subprocess
 import random
 import threading
 import sys
+import fcntl
+import struct
+import json
 
 app = Flask(__name__)
 CORS(app)
@@ -108,43 +111,100 @@ def clear_entire_bucket():
     socketio.emit('bucket_cleared', {'file_count': file_count, 'note_count': note_count})
     return jsonify({'status': 'success', 'message': f'Cleared {file_count} files and {note_count} notes'}), 200
 
+def get_lan_ip():
+    # Try to get a LAN IP (not Docker bridge)
+    try:
+        import re
+        import subprocess
+        output = subprocess.check_output(['ip', 'addr'], encoding='utf-8')
+        for line in output.splitlines():
+            if 'inet ' in line and not any(x in line for x in ['127.0.0.1', '172.17.', '172.18.', 'docker', 'br-']):
+                match = re.search(r'inet (\d+\.\d+\.\d+\.\d+)', line)
+                if match:
+                    return match.group(1)
+        return None
+    except Exception:
+        return None
+
+def get_host_network_info():
+    # Try to read host info from env or file
+    info = {}
+    try:
+        if os.environ.get('DROPLAN_HOST_NETINFO'):
+            info = json.loads(os.environ['DROPLAN_HOST_NETINFO'])
+        elif os.path.exists('/tmp/droplan_host_netinfo.json'):
+            with open('/tmp/droplan_host_netinfo.json') as f:
+                info = json.load(f)
+    except Exception:
+        pass
+    return info
+
 @app.route('/api/network-info', methods=['GET'])
 def get_network_info():
     try:
-        # Get local IP address
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        local_ip = s.getsockname()[0]
-        s.close()
-        
-        # Get Wi-Fi network name (SSID) - Linux specific
+        # Check for host-provided info (from wrapper)
+        host_info = get_host_network_info()
+        if host_info.get('ip') and host_info.get('wifi_name'):
+            return jsonify({
+                'ip': host_info['ip'],
+                'wifi_name': host_info['wifi_name'],
+                'hostname': host_info.get('hostname', socket.gethostname()),
+                'port': selected_port
+            }), 200
+        local_ip = None
         wifi_name = "Unknown Network"
-        try:
-            # Try nmcli first (NetworkManager)
-            result = subprocess.run(['nmcli', '-t', '-f', 'active,ssid', 'dev', 'wifi'], 
-                                  capture_output=True, text=True, timeout=5)
-            if result.returncode == 0:
-                lines = result.stdout.strip().split('\n')
-                for line in lines:
-                    if line.startswith('yes:'):
-                        wifi_name = line.split(':', 1)[1]
-                        break
-        except:
-            # Fallback: try iwgetid
+        # If running in Docker, try to get host IP and SSID from host
+        if os.path.exists('/.dockerenv'):
+            # Docker: try to get host LAN IP using host networking
             try:
-                result = subprocess.run(['iwgetid', '-r'], capture_output=True, text=True, timeout=5)
+                # If --network=host, container sees all host interfaces
+                output = subprocess.check_output(['ip', 'route', 'get', '1.1.1.1'], encoding='utf-8')
+                for part in output.split():
+                    if part.count('.') == 3:
+                        local_ip = part
+                        break
+            except Exception:
+                local_ip = None
+            wifi_name = "(run natively for Wi-Fi info)"
+        else:
+            # Native: try nmcli for active Wi-Fi
+            try:
+                result = subprocess.run(['nmcli', '-t', '-f', 'active,ssid', 'dev', 'wifi'], capture_output=True, text=True, timeout=5)
                 if result.returncode == 0:
-                    wifi_name = result.stdout.strip()
-            except:
+                    lines = result.stdout.strip().split('\n')
+                    for line in lines:
+                        if line.startswith('yes:'):
+                            wifi_name = line.split(':', 1)[1]
+                            break
+            except Exception:
                 pass
-        
+            # Get LAN IP from wlp4s0 (your Wi-Fi interface)
+            try:
+                output = subprocess.check_output(['ip', 'addr', 'show', 'wlp4s0'], encoding='utf-8')
+                for line in output.splitlines():
+                    line = line.strip()
+                    if line.startswith('inet '):
+                        local_ip = line.split()[1].split('/')[0]
+                        break
+            except Exception:
+                # fallback: try all interfaces
+                try:
+                    output = subprocess.check_output(['ip', 'addr'], encoding='utf-8')
+                    for line in output.splitlines():
+                        if 'inet ' in line and not any(x in line for x in ['127.0.0.1', '172.17.', '172.18.', 'docker', 'br-']):
+                            import re
+                            match = re.search(r'inet (\d+\.\d+\.\d+\.\d+)', line)
+                            if match:
+                                local_ip = match.group(1)
+                                break
+                except Exception:
+                    pass
         return jsonify({
-            'ip': local_ip,
+            'ip': local_ip or '',
             'wifi_name': wifi_name,
             'hostname': socket.gethostname(),
             'port': selected_port
         }), 200
-        
     except Exception as e:
         return jsonify({'error': f'Could not detect network info: {str(e)}'}), 500
 
@@ -213,6 +273,13 @@ def lan_devices():
 #WebSocket stuff
 @socketio.on('connect')
 def handle_connect():
+    print("Client connected")
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print("Client disconnected")
+
+# Front
     print("Client connected")
 
 @socketio.on('disconnect')
