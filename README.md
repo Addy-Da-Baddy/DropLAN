@@ -1,3 +1,8 @@
+<!-- filepath: /home/addy/DropLAN/README.md -->
+<p align="center">
+  <img src="droplan/logo.png" alt="DropLAN Logo" width="120"/>
+</p>
+
 # DropLAN
 
 **A modern, real-time local network file sharing tool with a beautiful web interface**
@@ -39,66 +44,71 @@
 
 ### Option 1: Docker (Recommended)
 
-```bash
+```fish
+# Clone the repo
 git clone https://github.com/Addy-Da-Baddy/DropLAN.git
 cd DropLAN
-docker build -t droplan .
-docker run -it --rm -p 5000-6000:5000-6000 droplan
-```
 
-> The app will automatically select an open port in the 5000-6000 range and print it in the logs. Access the web UI at `http://YOUR_IP:PORT/LAN_Drop`.
+# Install (no auto-launch)
+chmod +x install.sh
+./install.sh --docker
 
-### Option 2: Direct Clone and Run (Python)
+# Add ~/.local/bin to your PATH if not already (fish shell):
+set -U fish_user_paths $HOME/.local/bin $fish_user_paths
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/Addy-Da-Baddy/DropLAN.git
-   cd DropLAN
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   pip3 install --user -r requirements.txt
-   ```
-
-3. **Run:**
-   ```bash
-   python3 droplan/cli.py
-   ```
-
-## Usage
-
-### Starting DropLAN
-```bash
-# Start DropLAN (opens browser automatically)
+# Launch DropLAN (autolaunches browser, shows logs)
 droplan
-
-# Get help
-droplan help
-
-# Check version
-droplan version
 ```
 
-### Creating a Desktop Shortcut (Linux)
-```bash
-# Copy the desktop file to applications
-cp droplan.desktop ~/.local/share/applications/
-update-desktop-database ~/.local/share/applications/
+> The app will automatically select an open port in the 5000+ range and print it in the logs. Access the web UI at the address shown in your terminal.
+
+### Option 2: Python (Native)
+
+```fish
+# Clone the repo
+git clone https://github.com/Addy-Da-Baddy/DropLAN.git
+cd DropLAN
+
+# Install dependencies
+pip3 install --user -r requirements.txt
+
+# Install CLI
+chmod +x install.sh
+./install.sh --python
+
+# Add ~/.local/bin to your PATH if not already (fish shell):
+set -U fish_user_paths $HOME/.local/bin $fish_user_paths
+
+# Launch DropLAN
+droplan
 ```
 
-After this, you can find DropLAN in your applications menu and launch it with a single click!
+> The CLI wrapper will always prefer native Python if available, otherwise falls back to Docker.
 
-### Connecting Devices
+## Troubleshooting
 
-1. **Start DropLAN** on your main device
-2. **Note the IP address** shown in the web interface
-3. **On other devices**, either:
-   - Scan the QR code displayed, OR
-   - Go to `http://YOUR_IP:5000/LAN_Drop`, OR
-   - Manually enter the IP address in the Network Sync section of the interface
+### "Command not found: droplan"
+- Make sure `~/.local/bin` is in your PATH
+- For fish shell: `set -U fish_user_paths $HOME/.local/bin $fish_user_paths`
+- For bash/zsh: `export PATH="$HOME/.local/bin:$PATH"`
+- Reopen your terminal after changing PATH
 
-> **Important**: All devices must be on the same Wi-Fi network
+### "Connection refused" or can't access web UI
+- Check if the port is already in use (the script will pick a free port, but check logs)
+- Ensure firewall allows connections on the chosen port
+- Make sure Docker is running (for Docker installs)
+- All devices must be on the same Wi-Fi network
+
+### "Files not appearing" or UI issues
+- Refresh the page
+- Ensure JavaScript is enabled
+- Check terminal logs for errors
+- Try restarting DropLAN
+
+### Still stuck?
+- Run `droplan help` for command help
+- [Report issues](https://github.com/Addy-Da-Baddy/DropLAN/issues)
+- [Discussions](https://github.com/Addy-Da-Baddy/DropLAN/discussions)
 
 ## Architecture Overview
 
@@ -219,33 +229,26 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **"Command not found: droplan"**
 - Make sure `~/.local/bin` is in your PATH
-- Add to your shell config: `export PATH="$HOME/.local/bin:$PATH"`
+- For fish shell: `set -U fish_user_paths $HOME/.local/bin $fish_user_paths`
+- For bash/zsh: `export PATH="$HOME/.local/bin:$PATH"`
+- Reopen your terminal after changing PATH
 
-**"Connection refused"**
-- Check if port 5000 is available
-- Ensure firewall allows connections on port 5000
-- Verify all devices are on the same Wi-Fi network
+**"Connection refused" or can't access web UI**
+- Check if the port is already in use (the script will pick a free port, but check logs)
+- Ensure firewall allows connections on the chosen port
+- Make sure Docker is running (for Docker installs)
+- All devices must be on the same Wi-Fi network
 
-**"Files not appearing"**
-- Check WebSocket connection status (green dot in interface)
+**"Files not appearing" or UI issues**
 - Refresh the page
 - Ensure JavaScript is enabled
+- Check terminal logs for errors
+- Try restarting DropLAN
 
-### Getting Help
-
+### Still stuck?
 - Run `droplan help` for command help
 - [Report issues](https://github.com/Addy-Da-Baddy/DropLAN/issues)
 - [Discussions](https://github.com/Addy-Da-Baddy/DropLAN/discussions)
-
-## Roadmap
-
-- [ ] Dark/Light theme toggle
-- [ ] File encryption option
-- [ ] Custom port configuration
-- [ ] Mobile app companion
-- [ ] File preview support
-- [ ] Batch operations
-- [ ] User authentication
 
 ---
 
