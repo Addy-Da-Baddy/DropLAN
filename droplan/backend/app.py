@@ -8,6 +8,9 @@ from flask_socketio import SocketIO,emit
 import os
 import socket
 import subprocess
+import random
+import threading
+import sys
 
 app = Flask(__name__)
 CORS(app)
@@ -17,6 +20,9 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 template_dir = os.path.join(os.path.dirname(__file__), '..', 'templates')
 if os.path.exists(template_dir):
     app.template_folder = template_dir
+
+# Store the selected port globally
+selected_port = None
 
 @app.route('/')
 def root():
@@ -135,7 +141,8 @@ def get_network_info():
         return jsonify({
             'ip': local_ip,
             'wifi_name': wifi_name,
-            'hostname': socket.gethostname()
+            'hostname': socket.gethostname(),
+            'port': selected_port
         }), 200
         
     except Exception as e:
@@ -156,10 +163,52 @@ def generate_qr():
             target_ip = s.getsockname()[0]
             s.close()
         
-        return get_QR(f"http://{target_ip}:5000/LAN_Drop")
+        port = selected_port or 5000
+        return get_QR(f"http://{target_ip}:{port}/LAN_Drop")
     except Exception as e:
         return jsonify({'error': f'Could not generate QR code: {str(e)}'}), 500
-    
+
+@app.route('/api/lan-devices', methods=['GET'])
+def lan_devices():
+    import subprocess
+    import platform
+    import re
+    import socket
+    devices = []
+    try:
+        # Get local IP and subnet
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        subnet = '.'.join(local_ip.split('.')[:3])
+        # Ping sweep (fast, but not perfect)
+        def ping(ip):
+            param = '-n' if platform.system().lower() == 'windows' else '-c'
+            command = ['ping', param, '1', '-W', '1', ip]
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            return result.returncode == 0
+        threads = []
+        results = {}
+        def worker(ip):
+            if ping(ip):
+                try:
+                    hostname = socket.gethostbyaddr(ip)[0]
+                except:
+                    hostname = None
+                results[ip] = hostname
+        for i in range(1, 255):
+            ip = f"{subnet}.{i}"
+            t = threading.Thread(target=worker, args=(ip,))
+            threads.append(t)
+            t.start()
+        for t in threads:
+            t.join(timeout=2)
+        for ip, hostname in results.items():
+            devices.append({'ip': ip, 'hostname': hostname})
+        return jsonify({'devices': devices}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 #WebSocket stuff
 @socketio.on('connect')
@@ -191,8 +240,35 @@ def serve_frontend_slash():
 def serve_static(filename):
     return send_from_directory(os.path.join(os.path.dirname(__file__), '..'), filename)
 
+@app.route('/static/logo.png')
+def serve_logo():
+    return send_from_directory(os.path.join(os.path.dirname(__file__), '../'), 'logo.png')
+
+def find_open_port(start=5000, end=6000):
+    import socket
+    for port in range(start, end):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("0.0.0.0", port))
+                return port
+            except OSError:
+                continue
+    raise RuntimeError("No open port found in range")
+
 if __name__ == '__main__':
     start_cleanup_scheduler()
     bind_socketio_cleanup(socketio)
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
-    print("Server is running on http://localhost:5000")
+    # Accept port from env or CLI
+    port = None
+    if len(sys.argv) > 1:
+        try:
+            port = int(sys.argv[1])
+        except Exception:
+            port = None
+    if not port:
+        port = int(os.environ.get('DROPLAN_PORT', 0))
+    if not port:
+        port = find_open_port()
+    selected_port = port
+    socketio.run(app, host='0.0.0.0', port=selected_port, debug=True)
+    print(f"Server is running on http://localhost:{selected_port}")

@@ -1,51 +1,47 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# DropLAN Installation Script
-# Run this to install DropLAN on your system
-
-set -e
-
-echo "DropLAN Installation Script"
-echo "================================"
-
-# Check if Python is installed
-if ! command -v python3 &> /dev/null; then
-    echo "Python 3 is not installed. Please install Python 3.8+ first."
-    exit 1
+# Remove existing droplan Docker container and image if present
+if command -v docker &>/dev/null; then
+    if docker ps -a --format '{{.Names}}' | grep -q '^droplan$'; then
+        echo '[DropLAN] Removing existing Docker container...'
+        docker rm -f droplan
+    fi
+    if docker images --format '{{.Repository}}' | grep -q '^droplan$'; then
+        echo '[DropLAN] Removing existing Docker image...'
+        docker rmi -f droplan
+    fi
 fi
 
-# Check Python version
-python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-echo "Found Python $python_version"
-
-# Check if pip is installed
-if ! command -v pip3 &> /dev/null; then
-    echo "pip3 is not installed. Please install pip first."
-    exit 1
-fi
-
-echo "📦 Installing DropLAN..."
-
-# Install from current directory (for development) or from git
-if [ -f "setup.py" ]; then
-    echo "Installing from local directory..."
-    pip3 install --user -e .
+if [[ "$1" == "--docker" ]]; then
+  echo "Building DropLAN Docker image..."
+  docker build -t droplan .
+  # Do NOT run the container here
+elif [[ "$1" == "--python" ]]; then
+  echo "Installing DropLAN with pip..."
+  pip install .
+  # Do NOT run droplan here
 else
-    echo "🔗 Installing from GitHub..."
-    pip3 install --user git+https://github.com/Addy-Da-Baddy/DropLAN.git
+  echo "Usage: $0 [--python|--docker]"
+  echo "  --python   Install natively with Python (pip)"
+  echo "  --docker   Build Docker image only"
+  exit 1
 fi
 
-echo "DropLAN installed successfully!"
-echo ""
-echo "You can now run DropLAN with:"
-echo "   droplan"
-echo ""
-echo "For help, run:"
-echo "   droplan help"
-echo ""
-echo "Make sure ~/.local/bin is in your PATH"
-echo "   Add this to your shell config (~/.bashrc, ~/.zshrc, etc.):"
-echo "   export PATH=\"\$HOME/.local/bin:\$PATH\""
-echo ""
-echo "🌐 Once running, DropLAN will be available at:"
-echo "   http://localhost:5000/LAN_Drop"
+# Ensure ~/.local/bin exists
+mkdir -p "$HOME/.local/bin"
+
+# Install CLI wrapper for Docker (symlink droplan to droplan-wrapper.sh, portable for any user)
+ln -sf "$PWD/droplan-wrapper.sh" "$HOME/.local/bin/droplan"
+chmod +x "$HOME/.local/bin/droplan"
+
+# Print instructions for user
+if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+    echo "[DropLAN] Add ~/.local/bin to your PATH to use 'droplan' from anywhere."
+    if [ -n "$FISH_VERSION" ]; then
+        echo "  set -U fish_user_paths $HOME/.local/bin $fish_user_paths"
+    else
+        echo "  export PATH=\"$HOME/.local/bin:\$PATH\""
+    fi
+fi
+
+echo "[DropLAN] Installation complete! Type 'droplan' to start DropLAN."

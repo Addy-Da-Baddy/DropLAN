@@ -2,6 +2,7 @@
 
 from setuptools import setup, find_packages
 import os
+import sys
 
 # Read README file
 def read_readme():
@@ -49,10 +50,22 @@ setup(
     entry_points={
         "console_scripts": [
             "droplan=droplan.cli:main",
+            "droplan-docker-wrapper=/home/addy/DropLAN/droplan-wrapper.sh"
         ],
     },
     include_package_data=True,
     package_data={
-        "droplan": ["templates/*.html", "static/*"],
+        "droplan": ["templates/*.html", "static/*", "../droplan-wrapper.sh"],
     },
 )
+
+if __name__ == "__main__":
+    if "--docker" in sys.argv:
+        print("To install and run with Docker, use:\n  docker build -t droplan . && docker run -it --rm -p 5000-6000:5000-6000 droplan")
+        sys.exit(0)
+    elif "--python" in sys.argv:
+        print("To install with Python, use:\n  pip install . && droplan")
+        sys.exit(0)
+
+# NOTE: For LAN device discovery, the system must have the 'ping' command available (iputils-ping on Debian/Ubuntu).
+# If running natively, install with: sudo apt install iputils-ping

@@ -37,16 +37,18 @@
 
 ## Quick Start
 
-### Option 1: Direct Clone and Run (Recommended)
+### Option 1: Docker (Recommended)
 
 ```bash
 git clone https://github.com/Addy-Da-Baddy/DropLAN.git
 cd DropLAN
-./install.sh
-droplan
+docker build -t droplan .
+docker run -it --rm -p 5000-6000:5000-6000 droplan
 ```
 
-### Option 2: Manual Setup
+> The app will automatically select an open port in the 5000-6000 range and print it in the logs. Access the web UI at `http://YOUR_IP:PORT/LAN_Drop`.
+
+### Option 2: Direct Clone and Run (Python)
 
 1. **Clone the repository:**
    ```bash
@@ -140,6 +142,10 @@ After this, you can find DropLAN in your applications menu and launch it with a 
 - **QR Code**: Generates QR code for easy device connection
 - **Manual IP**: Option to manually enter IP for custom setups
 
+## New Features
+
+- **LAN Device Discovery**: The API `/api/lan-devices` lists active devices on your local network.
+
 ## Development
 
 ### Local Development Setup
@@ -185,6 +191,7 @@ DropLAN/
 - **Network**: Wi-Fi connection (all devices on same network)
 - **Browser**: Any modern web browser
 - **Platform**: Linux, macOS, Windows
+- **LAN Device Discovery**: Requires the `ping` command (install with `sudo apt install iputils-ping` on Debian/Ubuntu)
 
 ## Dependencies
 

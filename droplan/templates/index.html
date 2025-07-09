@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DropLAN - Local Network File Sharing</title>
+    <link rel="icon" type="image/png" href="/static/logo.png">
     <style>
         * {
             margin: 0;
@@ -494,9 +495,18 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>DropLAN</h1>
-            <div class="subtitle">Local Network File Sharing</div>
+        <!-- Header -->
+        <header class="header">
+            <div class="container">
+                <div class="header-content">
+                    <img src="/static/logo.png" alt="DropLAN Logo" style="height:48px;vertical-align:middle;margin-right:12px;">
+                    <h1 class="title">
+                        <span class="icon">&gt;</span>
+                        DropLAN
+                        <span class="subtitle">LOCAL NETWORK FILE SHARING</span>
+                    </h1>
+                </div>
+            </div>
         </header>
 
         <div class="grid">
@@ -558,7 +568,6 @@
                         <div class="empty-state-icon">
                             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
                                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                            </svg>
                         </div>
                         <div>No files in bucket</div>
                     </div>
@@ -687,6 +696,24 @@
                     <button class="btn" id="generate-qr-btn">Generate QR</button>
                 </div>
             </div>
+
+            <!-- LAN Devices Section -->
+            <section class="lan-devices-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>&gt; DEVICES ON LOCAL NETWORK</h2>
+                        <p>Active devices detected on your LAN</p>
+                    </div>
+                    <div class="card-content">
+                        <div id="lanDevicesList" class="item-list"></div>
+                        <div id="noLanDevices" class="empty-state">
+                            <span class="empty-icon">[EMPTY]</span>
+                            <p>No devices detected yet</p>
+                        </div>
+                        <button onclick="fetchLanDevices()" class="btn btn-secondary">REFRESH DEVICES</button>
+                    </div>
+                </div>
+            </section>
         </div>
     </div>
 
@@ -1248,6 +1275,34 @@
             }
         });
 
+        // LAN Devices Fetch
+        function fetchLanDevices() {
+            const list = document.getElementById('lanDevicesList');
+            const empty = document.getElementById('noLanDevices');
+            list.innerHTML = '';
+            fetch(`${API_BASE}/api/lan-devices`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.devices && data.devices.length > 0) {
+                        empty.style.display = 'none';
+                        list.style.display = 'block';
+                        data.devices.forEach(dev => {
+                            const item = document.createElement('div');
+                            item.className = 'item-card';
+                            item.innerHTML = `<div class="item-info"><div class="item-icon">[DEV]</div><div class="item-details"><div class="item-name">${dev.ip}</div><div class="item-meta">${dev.hostname || ''}</div></div></div>`;
+                            list.appendChild(item);
+                        });
+                    } else {
+                        empty.style.display = 'block';
+                        list.style.display = 'none';
+                    }
+                })
+                .catch(() => {
+                    empty.style.display = 'block';
+                    list.style.display = 'none';
+                });
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             loadNetworkInfo();
@@ -1256,6 +1311,7 @@
             
             // Start real-time timestamp updates immediately
             startTimeUpdates();
+            fetchLanDevices(); // Fetch LAN devices on load
         });
 
         // Global functions for inline event handlers
