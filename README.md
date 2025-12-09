@@ -22,13 +22,9 @@ chmod +x install.sh
 ./install.sh
 ```
 
-Add `~/.local/bin` to your PATH if needed:
+The installer automatically adds `~/.local/bin` to your PATH. After installation, restart your terminal or run:
 ```bash
-# bash/zsh
-export PATH="$HOME/.local/bin:$PATH"
-
-# fish
-set -U fish_user_paths $HOME/.local/bin $fish_user_paths
+source ~/.zshrc  # or ~/.bashrc for bash users
 ```
 
 ## Usage
