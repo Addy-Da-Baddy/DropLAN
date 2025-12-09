@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=2.0">
-    <title>DropLAN v2 - Local Network File Sharing</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DropLAN — Local File Sharing</title>
     <link rel="icon" type="image/png" href="/static/logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
@@ -11,35 +11,23 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    animation: {
-                        'fade-in': 'fadeIn 0.6s ease-out',
-                        'slide-up': 'slideUp 0.5s ease-out',
-                        'bounce-gentle': 'bounceGentle 2s infinite',
-                        'pulse-slow': 'pulse 3s infinite',
-                        'float': 'float 3s ease-in-out infinite',
-                        'glow': 'glow 2s ease-in-out infinite alternate',
-                    },
-                    keyframes: {
-                        fadeIn: {
-                            '0%': { opacity: '0', transform: 'translateY(20px)' },
-                            '100%': { opacity: '1', transform: 'translateY(0)' }
-                        },
-                        slideUp: {
-                            '0%': { opacity: '0', transform: 'translateY(30px)' },
-                            '100%': { opacity: '1', transform: 'translateY(0)' }
-                        },
-                        bounceGentle: {
-                            '0%, 100%': { transform: 'translateY(0)' },
-                            '50%': { transform: 'translateY(-10px)' }
-                        },
-                        float: {
-                            '0%, 100%': { transform: 'translateY(0px)' },
-                            '50%': { transform: 'translateY(-20px)' }
-                        },
-                        glow: {
-                            '0%': { boxShadow: '0 0 20px rgba(59, 130, 246, 0.5)' },
-                            '100%': { boxShadow: '0 0 40px rgba(16, 185, 129, 0.8)' }
+                    colors: {
+                        dark: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
                         }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
                     }
                 }
             }
@@ -47,258 +35,317 @@
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #334155 transparent;
         }
-        .glass {
-            background: rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+        *::-webkit-scrollbar { width: 6px; }
+        *::-webkit-scrollbar-track { background: transparent; }
+        *::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        
+        .card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(71, 85, 105, 0.3);
         }
-        .file-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        
+        .card-hover:hover {
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.1);
         }
-        .drag-over {
-            background: linear-gradient(45deg, #10b981, #3b82f6);
-            border-color: #10b981;
+        
+        .drop-zone {
+            background: repeating-linear-gradient(
+                -45deg,
+                transparent,
+                transparent 8px,
+                rgba(71, 85, 105, 0.1) 8px,
+                rgba(71, 85, 105, 0.1) 16px
+            );
         }
+        
+        .drop-zone.drag-over {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: #3b82f6;
+        }
+        
+        .btn {
+            transition: all 0.15s ease;
+        }
+        .btn:active {
+            transform: scale(0.97);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .pulse-dot {
+            animation: pulse-dot 2s infinite;
+        }
+        
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
         .spinner {
-            border: 3px solid #f3f4f6;
-            border-top: 3px solid #3b82f6;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-top-color: #3b82f6;
             border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.8s linear infinite;
         }
+        
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body class="min-h-screen gradient-bg">
+<body class="min-h-screen bg-dark-950 text-dark-100 font-sans">
     <!-- Header -->
-    <header class="text-center py-12 animate-fade-in">
-        <div class="inline-flex items-center gap-4 bg-white/20 backdrop-blur-lg rounded-2xl px-8 py-4 border border-white/30">
-            <img src="/static/logo.png" alt="DropLAN Logo" class="w-16 h-16 rounded-xl shadow-lg bg-gradient-to-br from-blue-500 to-purple-600 object-cover" style="object-fit:cover;" />
-            <div>
-                <h1 class="text-4xl font-bold text-white mb-2">DropLAN v2</h1>
-                <p class="text-white/80 text-lg">Lightning-fast local file sharing</p>
+    <header class="border-b border-dark-800 bg-dark-900/80 backdrop-blur-sm sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-semibold text-white">DropLAN</h1>
+                        <p class="text-xs text-dark-400">Local file sharing</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div id="connection-indicator" class="flex items-center gap-2 text-sm">
+                        <span class="w-2 h-2 rounded-full bg-dark-500 pulse-dot"></span>
+                        <span class="text-dark-400">Connecting...</span>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
 
     <!-- Main Content -->
-    <div class="container mx-auto px-6 pb-12">
-        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-            
-            <!-- File Upload Section -->
-            <div class="glass rounded-3xl p-8 animate-slide-up transition-all duration-300 hover:scale-105">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"/>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <!-- Network Bar -->
+        <div class="card rounded-xl p-4 mb-8 fade-in">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0"/>
                         </svg>
+                        <span class="text-dark-400 text-sm">Network:</span>
+                        <span id="wifi-name" class="text-white text-sm font-medium">—</span>
                     </div>
-                    <h2 class="text-2xl font-bold text-white">File Bucket</h2>
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/>
+                        </svg>
+                        <span class="text-dark-400 text-sm">IP:</span>
+                        <span id="device-ip" class="text-white text-sm font-medium font-mono">—</span>
+                    </div>
+                    <div class="hidden sm:flex items-center gap-2">
+                        <svg class="w-4 h-4 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
+                        </svg>
+                        <span class="text-dark-400 text-sm">Host:</span>
+                        <span id="hostname" class="text-white text-sm font-medium">—</span>
+                    </div>
                 </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-dark-400 text-xs">Files expire in 30 min</span>
+                </div>
+            </div>
+        </div>
 
-                <!-- Upload Area -->
-                <div id="upload-area" class="border-3 border-dashed border-white/40 rounded-2xl p-12 text-center mb-6 cursor-pointer transition-all duration-300 hover:border-green-400 hover:bg-white/10 group">
-                    <input type="file" id="file-input" multiple class="hidden">
-                    <div class="animate-bounce-gentle group-hover:animate-pulse">
-                        <svg class="w-16 h-16 text-white/60 mx-auto mb-4 group-hover:text-green-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- File Bucket -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Upload Zone -->
+                <div class="card card-hover rounded-xl p-6 fade-in" style="animation-delay: 0.05s">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                            </svg>
+                            File Bucket
+                        </h2>
+                        <div class="flex gap-2">
+                            <button id="download-all-btn" class="btn text-dark-300 hover:text-white hover:bg-dark-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                                Download All
+                            </button>
+                            <button id="clear-bucket-btn" class="btn text-dark-300 hover:text-red-400 hover:bg-red-500/10 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Drop Zone -->
+                    <div id="upload-area" class="drop-zone border-2 border-dashed border-dark-600 rounded-xl p-8 text-center cursor-pointer transition-all hover:border-dark-500">
+                        <input type="file" id="file-input" multiple class="hidden">
+                        <div class="w-12 h-12 rounded-full bg-dark-800 flex items-center justify-center mx-auto mb-3">
+                            <svg class="w-6 h-6 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                            </svg>
+                        </div>
+                        <p class="text-dark-300 font-medium mb-1">Drop files here or click to browse</p>
+                        <p class="text-dark-500 text-sm">Any file type • Max 100MB per file</p>
+                    </div>
+                    
+                    <!-- Upload Button -->
+                    <button id="upload-btn" class="btn w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                         </svg>
-                    </div>
-                    <p class="text-white font-semibold mb-2">Drag & drop files or click to select</p>
-                    <p class="text-white/60 text-sm">Files expire after 30 minutes</p>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="flex flex-wrap gap-3 mb-6">
-                    <button id="upload-btn" class="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 active:scale-95">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                        </svg>
-                        Upload
-                    </button>
-                    <button id="download-all-btn" class="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 active:scale-95">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-                        </svg>
-                        Download All
-                    </button>
-                    <button id="clear-bucket-btn" class="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 active:scale-95">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
-                        Clear
+                        Upload Files
                     </button>
                 </div>
 
                 <!-- File List -->
-                <div id="file-list" class="space-y-3 max-h-96 overflow-y-auto">
-                    <div class="text-center py-12 text-white/60">
-                        <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
-                        <p>No files in bucket</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Notes Section -->
-            <div class="glass rounded-3xl p-8 animate-slide-up transition-all duration-300 hover:scale-105" style="animation-delay: 0.1s">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                        </svg>
-                    </div>
-                    <h2 class="text-2xl font-bold text-white">Quick Notes</h2>
-                </div>
-
-                <!-- Note Input -->
-                <textarea id="note-input" placeholder="Write your note here..." class="w-full h-32 bg-white/20 border border-white/30 rounded-xl p-4 text-white placeholder-white/60 mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all"></textarea>
-
-                <!-- Note Actions -->
-                <div class="flex gap-3 mb-6">
-                    <button id="save-note-btn" class="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 active:scale-95">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
-                        </svg>
-                        Save Note
-                    </button>
-                    <button id="clear-notes-btn" class="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 active:scale-95">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
-                        Clear All
-                    </button>
-                </div>
-
-                <!-- Notes List -->
-                <div id="notes-list" class="space-y-3 max-h-96 overflow-y-auto">
-                    <div class="text-center py-12 text-white/60">
-                        <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
-                        <p>No notes saved</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Network Info Section -->
-            <div class="glass rounded-3xl p-8 animate-slide-up transition-all duration-300 hover:scale-105 lg:col-span-2 xl:col-span-1" style="animation-delay: 0.2s">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
-                        </svg>
-                    </div>
-                    <h2 class="text-2xl font-bold text-white">Network Sync</h2>
-                </div>
-
-                <!-- Warning -->
-                <div class="bg-yellow-500/20 border border-yellow-500/40 rounded-xl p-4 mb-6">
-                    <div class="flex items-center gap-2 text-yellow-200">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
-                        </svg>
-                        <span class="text-sm font-medium">Devices must be on the same Wi-Fi network</span>
-                    </div>
-                </div>
-
-                <!-- Network Info -->
-                <div class="space-y-4 mb-6">
-                    <div class="flex justify-between items-center text-white">
-                        <span class="text-white/60">Network:</span>
-                        <span id="wifi-name" class="font-semibold animate-pulse">Loading...</span>
-                    </div>
-                    <div class="flex justify-between items-center text-white">
-                        <span class="text-white/60">IP Address:</span>
-                        <span id="device-ip" class="font-semibold animate-pulse">Loading...</span>
-                    </div>
-                    <div class="flex justify-between items-center text-white">
-                        <span class="text-white/60">Hostname:</span>
-                        <span id="hostname" class="font-semibold animate-pulse">Loading...</span>
-                    </div>
-                </div>
-
-                <!-- QR Code -->
-                <div id="qr-container" class="text-center mb-6">
-                    <div class="animate-pulse">
-                        <div class="w-48 h-48 bg-white/20 rounded-xl mx-auto flex items-center justify-center">
-                            <div class="spinner"></div>
+                <div class="card card-hover rounded-xl p-6 fade-in" style="animation-delay: 0.1s">
+                    <h3 class="text-sm font-medium text-dark-400 uppercase tracking-wider mb-4">Shared Files</h3>
+                    <div id="file-list" class="space-y-2 max-h-80 overflow-y-auto">
+                        <div class="text-center py-12">
+                            <div class="w-16 h-16 rounded-full bg-dark-800 flex items-center justify-center mx-auto mb-3">
+                                <svg class="w-8 h-8 text-dark-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"/>
+                                </svg>
+                            </div>
+                            <p class="text-dark-500">No files shared yet</p>
+                            <p class="text-dark-600 text-sm mt-1">Drop files above to share</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Manual IP -->
-                <div class="flex gap-3">
-                    <input id="manual-ip-input" type="text" placeholder="Enter IP manually" class="flex-1 bg-white/20 border border-white/30 rounded-xl px-4 py-3 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-green-400">
-                    <button id="generate-qr-btn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 active:scale-95">
-                        Generate QR
-                    </button>
+                <!-- Notes Section -->
+                <div class="card card-hover rounded-xl p-6 fade-in" style="animation-delay: 0.15s">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                            Quick Notes
+                        </h2>
+                        <button id="clear-notes-btn" class="btn text-dark-300 hover:text-red-400 hover:bg-red-500/10 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                            Clear All
+                        </button>
+                    </div>
+                    
+                    <!-- Note Input -->
+                    <div class="flex gap-2 mb-4">
+                        <textarea id="note-input" placeholder="Type a quick note to share across devices..." rows="2" class="flex-1 bg-dark-800 border border-dark-700 rounded-lg px-4 py-3 text-white placeholder-dark-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none text-sm"></textarea>
+                        <button id="save-note-btn" class="btn bg-amber-600 hover:bg-amber-500 text-white px-4 rounded-lg font-medium transition-colors self-end">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Notes List -->
+                    <div id="notes-list" class="space-y-2 max-h-64 overflow-y-auto">
+                        <div class="text-center py-8">
+                            <p class="text-dark-500 text-sm">No notes yet</p>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- LAN Devices Section -->
-        <div class="glass rounded-3xl p-8 mt-8 animate-slide-up" style="animation-delay: 0.3s">
-            <div class="flex items-center justify-between mb-6">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-indigo-500 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                <!-- QR Code -->
+                <div class="card card-hover rounded-xl p-6 fade-in" style="animation-delay: 0.2s">
+                    <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                         </svg>
+                        Connect Device
+                    </h2>
+                    
+                    <div id="qr-container" class="bg-white rounded-xl p-4 mb-4">
+                        <div class="w-full aspect-square flex items-center justify-center">
+                            <div class="spinner"></div>
+                        </div>
                     </div>
-                    <div>
-                        <h2 class="text-2xl font-bold text-white">Local Devices</h2>
-                        <p class="text-white/60 text-sm">Devices detected on your network</p>
+                    
+                    <p class="text-dark-400 text-sm text-center mb-4">Scan with your phone to connect</p>
+                    
+                    <!-- Manual IP -->
+                    <div class="flex gap-2">
+                        <input id="manual-ip-input" type="text" placeholder="Manual IP" class="flex-1 bg-dark-800 border border-dark-700 rounded-lg px-3 py-2 text-white placeholder-dark-500 focus:outline-none focus:border-blue-500 text-sm font-mono">
+                        <button id="generate-qr-btn" class="btn bg-dark-700 hover:bg-dark-600 text-white px-3 py-2 rounded-lg transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
-                <button id="refresh-devices-btn" class="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 active:scale-95">
-                    <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
-                    Refresh
-                </button>
-            </div>
 
-            <div id="lan-devices-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div class="col-span-full text-center py-12 text-white/60">
-                    <svg class="w-16 h-16 mx-auto mb-4 opacity-50 animate-pulse-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                    </svg>
-                    <p>No devices detected yet</p>
+                <!-- LAN Devices -->
+                <div class="card card-hover rounded-xl p-6 fade-in" style="animation-delay: 0.25s">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+                            </svg>
+                            Devices
+                        </h2>
+                        <button id="refresh-devices-btn" class="btn text-dark-400 hover:text-white p-1.5 rounded-lg hover:bg-dark-700 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div id="lan-devices-list" class="space-y-2 max-h-64 overflow-y-auto">
+                        <div class="text-center py-6">
+                            <div class="spinner mx-auto mb-2"></div>
+                            <p class="text-dark-500 text-sm">Scanning...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info Card -->
+                <div class="card rounded-xl p-4 fade-in" style="animation-delay: 0.3s">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-dark-300 text-sm">All devices must be on the <span class="text-white font-medium">same WiFi network</span> to share files.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <!-- Toast Container -->
-    <div id="toast-container" class="fixed top-6 right-6 z-50 space-y-4"></div>
-
-    <!-- Floating Action Button for Connection Status -->
-    <div class="fixed bottom-6 right-6">
-        <div id="connection-status" class="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center shadow-lg animate-pulse transition-all duration-300">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
-            </svg>
-        </div>
-    </div>
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-2"></div>
 
     <script>
-        // Mock data and functionality for demonstration
         let files = {};
         let notes = {};
         let connected = false;
 
-        // DOM Elements
         const elements = {
             uploadArea: document.getElementById('upload-area'),
             fileInput: document.getElementById('file-input'),
@@ -318,28 +365,38 @@
             generateQrBtn: document.getElementById('generate-qr-btn'),
             lanDevicesList: document.getElementById('lan-devices-list'),
             refreshDevicesBtn: document.getElementById('refresh-devices-btn'),
-            connectionStatus: document.getElementById('connection-status'),
+            connectionIndicator: document.getElementById('connection-indicator'),
             toastContainer: document.getElementById('toast-container')
         };
 
-        // Utility Functions
+        // Toast notification
         function showToast(message, type = 'info') {
             const toast = document.createElement('div');
             const colors = {
-                success: 'bg-green-500',
-                error: 'bg-red-500',
-                info: 'bg-blue-500',
-                warning: 'bg-yellow-500'
+                success: 'bg-emerald-600',
+                error: 'bg-red-600',
+                info: 'bg-blue-600',
+                warning: 'bg-amber-600'
+            };
+            const icons = {
+                success: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>',
+                error: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>',
+                info: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+                warning: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>'
             };
             
-            toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg animate-slide-up transition-all duration-300 hover:scale-105`;
-            toast.textContent = message;
+            toast.className = `${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg fade-in flex items-center gap-3 text-sm`;
+            toast.innerHTML = `
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">${icons[type]}</svg>
+                <span>${message}</span>
+            `;
             
             elements.toastContainer.appendChild(toast);
             
             setTimeout(() => {
                 toast.style.opacity = '0';
-                toast.style.transform = 'translateX(100%)';
+                toast.style.transform = 'translateX(20px)';
+                toast.style.transition = 'all 0.3s ease';
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
@@ -348,41 +405,65 @@
             const sizes = ['B', 'KB', 'MB', 'GB'];
             if (bytes === 0) return '0 B';
             const i = Math.floor(Math.log(bytes) / Math.log(1024));
-            return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+            return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
         }
 
         function formatTimeAgo(timestamp) {
-            const now = Date.now();
-            const diff = Math.floor((now - timestamp) / 1000);
-            if (diff < 60) return `${diff}s ago`;
+            const diff = Math.floor((Date.now() - timestamp) / 1000);
+            if (diff < 60) return 'just now';
             if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
             return `${Math.floor(diff / 3600)}h ago`;
         }
 
         function formatCountdown(expiryTimestamp) {
-            const now = Date.now();
-            let secondsLeft = Math.floor((expiryTimestamp - now) / 1000);
-            if (secondsLeft < 0) secondsLeft = 0;
+            let secondsLeft = Math.max(0, Math.floor((expiryTimestamp - Date.now()) / 1000));
             const m = Math.floor(secondsLeft / 60);
             const s = secondsLeft % 60;
-            return `${m}:${s.toString().padStart(2, '0')} left`;
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const types = {
+                image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'],
+                video: ['mp4', 'mov', 'avi', 'mkv', 'webm'],
+                audio: ['mp3', 'wav', 'flac', 'aac', 'm4a'],
+                doc: ['pdf', 'doc', 'docx', 'txt', 'rtf'],
+                code: ['js', 'py', 'html', 'css', 'json', 'ts', 'jsx', 'tsx'],
+                archive: ['zip', 'rar', '7z', 'tar', 'gz']
+            };
+            
+            for (const [type, exts] of Object.entries(types)) {
+                if (exts.includes(ext)) {
+                    const icons = {
+                        image: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
+                        video: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z',
+                        audio: 'M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3',
+                        doc: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+                        code: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4',
+                        archive: 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4'
+                    };
+                    return icons[type];
+                }
+            }
+            return 'M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z';
         }
 
         let countdownInterval = null;
 
-        // --- API Functions ---
+        // API
         async function apiCall(endpoint, options = {}) {
             try {
                 const response = await fetch(endpoint, options);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response;
             } catch (error) {
-                showToast(`API Error: ${error.message}`, 'error');
+                showToast(`Error: ${error.message}`, 'error');
                 throw error;
             }
         }
 
-        // --- File Management ---
+        // Files
         async function loadFiles() {
             try {
                 const response = await apiCall('/api/bucket/files');
@@ -394,17 +475,31 @@
         async function uploadFiles() {
             const fileList = elements.fileInput.files;
             if (fileList.length === 0) {
-                showToast('Please select files to upload', 'error');
+                showToast('Select files to upload', 'warning');
                 return;
             }
-            for (const file of fileList) {
-                const formData = new FormData();
-                formData.append('file', file);
-                await apiCall('/api/upload/file', { method: 'POST', body: formData });
+            
+            elements.uploadBtn.disabled = true;
+            elements.uploadBtn.innerHTML = '<div class="spinner mx-auto"></div>';
+            
+            try {
+                for (const file of fileList) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    await apiCall('/api/upload/file', { method: 'POST', body: formData });
+                }
+                elements.fileInput.value = '';
+                await loadFiles();
+                showToast(`${fileList.length} file${fileList.length > 1 ? 's' : ''} uploaded`, 'success');
+            } finally {
+                elements.uploadBtn.disabled = false;
+                elements.uploadBtn.innerHTML = `
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    Upload Files
+                `;
             }
-            elements.fileInput.value = '';
-            await loadFiles();
-            showToast(`${fileList.length} file(s) uploaded successfully`, 'success');
         }
 
         async function downloadFile(id) {
@@ -412,73 +507,73 @@
         }
 
         async function deleteFile(id) {
-            if (!confirm('Are you sure you want to delete this file?')) return;
             await apiCall(`/api/delete/file/${id}`, { method: 'DELETE' });
             await loadFiles();
             showToast('File deleted', 'success');
         }
 
         async function clearBucket() {
-            if (!confirm('Are you sure you want to clear the entire bucket?')) return;
+            if (!confirm('Clear all files?')) return;
             await apiCall('/api/clear/bucket', { method: 'DELETE' });
             await loadFiles();
             showToast('Bucket cleared', 'success');
         }
 
         async function downloadAllFiles() {
-            const fileIds = Object.keys(files);
-            if (fileIds.length === 0) {
-                showToast('No files to download', 'error');
+            const ids = Object.keys(files);
+            if (ids.length === 0) {
+                showToast('No files to download', 'warning');
                 return;
             }
-            for (const id of fileIds) {
+            for (const id of ids) {
                 await downloadFile(id);
-                await new Promise(r => setTimeout(r, 100));
+                await new Promise(r => setTimeout(r, 200));
             }
         }
 
-        // File Management
         function renderFileList() {
-            const fileEntries = Object.entries(files);
-            if (fileEntries.length === 0) {
+            const entries = Object.entries(files);
+            if (entries.length === 0) {
                 elements.fileList.innerHTML = `
-                    <div class="text-center py-12 text-white/60">
-                        <svg class="w-16 h-16 mx-auto mb-4 opacity-50 animate-bounce-gentle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
-                        <p>No files in bucket</p>
+                    <div class="text-center py-12">
+                        <div class="w-16 h-16 rounded-full bg-dark-800 flex items-center justify-center mx-auto mb-3">
+                            <svg class="w-8 h-8 text-dark-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        <p class="text-dark-500">No files shared yet</p>
+                        <p class="text-dark-600 text-sm mt-1">Drop files above to share</p>
                     </div>
                 `;
                 return;
             }
-            elements.fileList.innerHTML = fileEntries.map(([id, file]) => {
+            
+            elements.fileList.innerHTML = entries.map(([id, file]) => {
                 const expiry = file.timestamp + 30 * 60 * 1000;
                 return `
-                    <div class="bg-white/20 rounded-xl p-4 transition-all duration-300 file-hover animate-fade-in group" data-file-id="${id}">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-blue-500/30 rounded-lg flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-white font-semibold">${file.name}</p>
-                                    <p class="text-white/60 text-sm">${formatFileSize(file.size || 0)} • <span class="file-countdown" data-expiry="${expiry}"></span></p>
-                                </div>
+                    <div class="group flex items-center justify-between p-3 rounded-lg bg-dark-800/50 hover:bg-dark-800 transition-colors fade-in" data-file-id="${id}">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-lg bg-dark-700 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${getFileIcon(file.name)}"/>
+                                </svg>
                             </div>
-                            <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onclick="downloadFile('${id}')" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded-lg transition-all duration-200 hover:scale-110">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V13a2 2 0 01-2 2z"/>
-                                    </svg>
-                                </button>
-                                <button onclick="deleteFile('${id}')" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg transition-all duration-200 hover:scale-110">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                    </svg>
-                                </button>
+                            <div class="min-w-0">
+                                <p class="text-white text-sm font-medium truncate">${file.name}</p>
+                                <p class="text-dark-500 text-xs">${formatFileSize(file.size || 0)} • <span class="file-countdown text-dark-400" data-expiry="${expiry}"></span></p>
                             </div>
+                        </div>
+                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="downloadFile('${id}')" class="btn p-2 text-dark-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                            </button>
+                            <button onclick="deleteFile('${id}')" class="btn p-2 text-dark-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 `;
@@ -491,9 +586,7 @@
             countdownInterval = setInterval(() => {
                 document.querySelectorAll('.file-countdown').forEach(el => {
                     const expiry = parseInt(el.getAttribute('data-expiry'));
-                    const now = Date.now();
-                    if (expiry - now <= 0) {
-                        // File expired, reload list
+                    if (expiry - Date.now() <= 0) {
                         loadFiles();
                     } else {
                         el.textContent = formatCountdown(expiry);
@@ -502,7 +595,7 @@
             }, 1000);
         }
 
-        // --- Notes Management ---
+        // Notes
         async function loadNotes() {
             try {
                 const response = await apiCall('/api/bucket/notes');
@@ -514,7 +607,7 @@
         async function saveNote() {
             const content = elements.noteInput.value.trim();
             if (!content) {
-                showToast('Note cannot be empty', 'error');
+                showToast('Enter a note first', 'warning');
                 return;
             }
             await apiCall('/api/upload/note', {
@@ -524,68 +617,54 @@
             });
             elements.noteInput.value = '';
             await loadNotes();
-            showToast('Note saved successfully', 'success');
-        }
-
-        async function editNote(id) {
-            const newContent = prompt('Edit note:', notes[id].content);
-            if (newContent !== null && newContent.trim()) {
-                await apiCall(`/api/delete/note/${id}`, { method: 'DELETE' });
-                await apiCall('/api/upload/note', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: newContent.trim() })
-                });
-                await loadNotes();
-                showToast('Note updated', 'success');
-            }
+            showToast('Note saved', 'success');
         }
 
         async function deleteNote(id) {
-            if (!confirm('Are you sure you want to delete this note?')) return;
             await apiCall(`/api/delete/note/${id}`, { method: 'DELETE' });
             await loadNotes();
             showToast('Note deleted', 'success');
         }
 
-        async function clearAllNotes() {
-            if (!confirm('Are you sure you want to clear all notes?')) return;
-            await apiCall('/api/clear/notes', { method: 'DELETE' });
-            await loadNotes();
-            showToast('All notes cleared', 'success');
+        async function copyNote(content) {
+            await navigator.clipboard.writeText(content);
+            showToast('Copied to clipboard', 'success');
         }
 
-        // Notes Management
+        async function clearAllNotes() {
+            if (!confirm('Clear all notes?')) return;
+            await apiCall('/api/clear/notes', { method: 'DELETE' });
+            await loadNotes();
+            showToast('Notes cleared', 'success');
+        }
+
         function renderNotesList() {
-            const noteEntries = Object.entries(notes);
-            if (noteEntries.length === 0) {
+            const entries = Object.entries(notes);
+            if (entries.length === 0) {
                 elements.notesList.innerHTML = `
-                    <div class="text-center py-12 text-white/60">
-                        <svg class="w-16 h-16 mx-auto mb-4 opacity-50 animate-bounce-gentle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
-                        <p>No notes saved</p>
+                    <div class="text-center py-8">
+                        <p class="text-dark-500 text-sm">No notes yet</p>
                     </div>
                 `;
                 return;
             }
 
-            elements.notesList.innerHTML = noteEntries.map(([id, note]) => `
-                <div class="bg-white/20 rounded-xl p-4 transition-all duration-300 file-hover animate-fade-in group">
-                    <div class="flex justify-between items-start">
-                        <div class="flex-1">
-                            <p class="text-white font-semibold mb-2">${note.content.substring(0, 50)}${note.content.length > 50 ? '...' : ''}</p>
-                            <p class="text-white/60 text-sm">${formatTimeAgo(note.timestamp)}</p>
+            elements.notesList.innerHTML = entries.map(([id, note]) => `
+                <div class="group p-3 rounded-lg bg-dark-800/50 hover:bg-dark-800 transition-colors fade-in">
+                    <div class="flex justify-between items-start gap-2">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-dark-200 text-sm whitespace-pre-wrap break-words">${note.content}</p>
+                            <p class="text-dark-600 text-xs mt-2">${formatTimeAgo(note.timestamp)}</p>
                         </div>
-                        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onclick="editNote('${id}')" class="bg-purple-500 hover:bg-purple-600 text-white p-2 rounded-lg transition-all duration-200 hover:scale-110">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                            <button onclick="copyNote(\`${note.content.replace(/`/g, '\\`').replace(/\\/g, '\\\\')}\`)" class="btn p-1.5 text-dark-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                                 </svg>
                             </button>
-                            <button onclick="deleteNote('${id}')" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg transition-all duration-200 hover:scale-110">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            <button onclick="deleteNote('${id}')" class="btn p-1.5 text-dark-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                 </svg>
                             </button>
                         </div>
@@ -594,7 +673,7 @@
             `).join('');
         }
 
-        // --- Network Info ---
+        // Network
         async function loadNetworkInfo() {
             try {
                 const response = await apiCall('/api/network-info');
@@ -612,22 +691,22 @@
 
         async function generateQRCode(ip) {
             try {
-                elements.qrContainer.innerHTML = `<div class="spinner mx-auto"></div>`;
+                elements.qrContainer.innerHTML = `<div class="w-full aspect-square flex items-center justify-center"><div class="spinner"></div></div>`;
                 const response = await apiCall(`/api/qr/?ip=${encodeURIComponent(ip)}`);
                 const blob = await response.blob();
                 const url = URL.createObjectURL(blob);
-                elements.qrContainer.innerHTML = `<img src="${url}" alt="QR Code" class="w-48 h-48 bg-white rounded-xl mx-auto animate-glow">`;
+                elements.qrContainer.innerHTML = `<img src="${url}" alt="QR Code" class="w-full aspect-square rounded-lg">`;
             } catch {
-                elements.qrContainer.innerHTML = `<div class="text-red-400">Failed to generate QR code</div>`;
+                elements.qrContainer.innerHTML = `<div class="w-full aspect-square flex items-center justify-center text-red-400 text-sm">Failed to load QR</div>`;
             }
         }
 
-        // --- LAN Devices ---
+        // Devices
         async function refreshDevices() {
             elements.lanDevicesList.innerHTML = `
-                <div class="col-span-full text-center py-8">
-                    <div class="spinner mx-auto mb-4"></div>
-                    <p class="text-white/60">Scanning for devices...</p>
+                <div class="text-center py-6">
+                    <div class="spinner mx-auto mb-2"></div>
+                    <p class="text-dark-500 text-sm">Scanning...</p>
                 </div>
             `;
             try {
@@ -635,44 +714,46 @@
                 const data = await response.json();
                 if (data.devices && data.devices.length > 0) {
                     elements.lanDevicesList.innerHTML = data.devices.map(device => `
-                        <div class="bg-white/20 rounded-xl p-4 transition-all duration-300 hover:scale-105 animate-fade-in">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-indigo-500/30 rounded-lg flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-white font-semibold">${device.hostname || 'Unknown'}</p>
-                                    <p class="text-white/60 text-sm">${device.ip}</p>
-                                </div>
+                        <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-dark-800 transition-colors fade-in">
+                            <div class="w-8 h-8 rounded-lg bg-dark-700 flex items-center justify-center">
+                                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                </svg>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-white text-sm font-medium truncate">${device.hostname || 'Unknown'}</p>
+                                <p class="text-dark-500 text-xs font-mono">${device.ip}</p>
                             </div>
                         </div>
                     `).join('');
                 } else {
                     elements.lanDevicesList.innerHTML = `
-                        <div class="col-span-full text-center py-12 text-white/60">
-                            <svg class="w-16 h-16 mx-auto mb-4 opacity-50 animate-pulse-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                            </svg>
-                            <p>No devices detected yet</p>
+                        <div class="text-center py-6">
+                            <p class="text-dark-500 text-sm">No devices found</p>
                         </div>
                     `;
                 }
             } catch {
-                elements.lanDevicesList.innerHTML = `<div class="col-span-full text-center py-12 text-red-400">Failed to scan devices</div>`;
+                elements.lanDevicesList.innerHTML = `<div class="text-center py-6 text-red-400 text-sm">Scan failed</div>`;
             }
         }
 
-        function updateConnectionStatus() {
+        function updateConnectionStatus(isConnected) {
+            connected = isConnected;
             if (connected) {
-                elements.connectionStatus.className = 'w-16 h-16 bg-green-500 rounded-full flex items-center justify-center shadow-lg animate-glow transition-all duration-300';
+                elements.connectionIndicator.innerHTML = `
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span class="text-dark-300">Connected</span>
+                `;
             } else {
-                elements.connectionStatus.className = 'w-16 h-16 bg-red-500 rounded-full flex items-center justify-center shadow-lg animate-pulse transition-all duration-300';
+                elements.connectionIndicator.innerHTML = `
+                    <span class="w-2 h-2 rounded-full bg-dark-500 pulse-dot"></span>
+                    <span class="text-dark-400">Connecting...</span>
+                `;
             }
         }
 
-        // --- Event Listeners ---
+        // Event Listeners
         elements.uploadArea.addEventListener('click', () => elements.fileInput.click());
         elements.uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
@@ -685,6 +766,7 @@
             e.preventDefault();
             elements.uploadArea.classList.remove('drag-over');
             elements.fileInput.files = e.dataTransfer.files;
+            uploadFiles();
         });
 
         elements.uploadBtn.addEventListener('click', uploadFiles);
@@ -692,34 +774,38 @@
         elements.clearBucketBtn.addEventListener('click', clearBucket);
 
         elements.saveNoteBtn.addEventListener('click', saveNote);
+        elements.noteInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                saveNote();
+            }
+        });
         elements.clearNotesBtn.addEventListener('click', clearAllNotes);
 
         elements.generateQrBtn.addEventListener('click', () => {
             const ip = elements.manualIpInput.value.trim();
-            if (ip) {
-                generateQRCode(ip);
-            } else {
-                showToast('Please enter an IP address', 'error');
-            }
+            if (ip) generateQRCode(ip);
+            else showToast('Enter an IP address', 'warning');
         });
 
         elements.refreshDevicesBtn.addEventListener('click', refreshDevices);
 
-        // --- Initialize ---
+        // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             await loadNetworkInfo();
             await loadFiles();
             await loadNotes();
             await refreshDevices();
-            // Simulate connection after 2 seconds
-            setTimeout(() => {
-                connected = true;
-                updateConnectionStatus();
-                showToast('Connected to DropLAN server', 'success');
-            }, 2000);
         });
 
+        // Socket.io
         const socket = io();
+        socket.on('connect', () => {
+            updateConnectionStatus(true);
+            showToast('Connected to server', 'success');
+        });
+        socket.on('disconnect', () => {
+            updateConnectionStatus(false);
+        });
         socket.on('file_uploaded', () => loadFiles());
         socket.on('file_deleted', () => loadFiles());
         socket.on('bucket_cleared', () => { loadFiles(); loadNotes(); });
